@@ -16,10 +16,11 @@
     THREE.ImageUtils.crossOrigin = "anonymous";
     var img = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=40.714728,-73.998672&zoom=12&size=400x400')});
     img.map.needsUpdate = true;
-    var plane = new THREE.Mesh(new THREE.PlaneGeometry(800,800), img);
+    var plane = new THREE.Mesh(new THREE.PlaneGeometry(640,640), img);
     plane.overdraw = true;
     scene.add(plane);
-    
+   
+    /*
     var sphereGeom = new THREE.SphereGeometry(3, 3, 2);
     var heatColors = [0xffffb2, 0xfecc5c, 0xfd8d3c, 0xf03b20, 0xbd0026];
     var sphereMat = [];
@@ -32,10 +33,59 @@
         sphere.position.x = i*8;
         sphere.position.y = j*8;
         sphere.position.z = zVal;
-        scene.add(sphere);
+        //scene.add(sphere);
+      }
+    }*/
+
+    var TILE_H = 640;
+    var TILE_W = 640;
+    var MAX_X = TILE_W/2;
+    var MIN_X = - TILE_W/2;
+    var MAX_Y = TILE_H/2;
+    var MIN_Y = - TILE_H/2;
+    var NORMAL_DIST = 400;
+    var MIN_DIST = 300;
+    var MAX_DIST = 600;
+    function updateMap() {
+      var hasChanged = false;
+      if (lookAtPoint.x > MAX_X) {
+        lookAtPoint.x -= TILE_W/2;
+        mapLocation.lon = getBounds(mapLocation, TILE_H, TILE_W).rightLon;
+        hasChanged = true;
+      }
+      if (lookAtPoint.x < MIN_X) {
+        lookAtPoint.x += TILE_W/2;
+        mapLocation.lon = getBounds(mapLocation, TILE_H, TILE_W).leftLon;
+        hasChanged = true;
+      }
+      if (lookAtPoint.y > MAX_Y) {
+        lookAtPoint.y -= TILE_H/2;
+        mapLocation.lat = getBounds(mapLocation, TILE_H, TILE_W).upLat;
+        hasChanged = true;
+      }
+      if (lookAtPoint.y < MIN_Y) {
+        lookAtPoint.y += TILE_H/2;
+        mapLocation.lat = getBounds(mapLocation, TILE_H, TILE_W).downLat;
+        hasChanged = true;
+      }
+      if (cameraDelta.d < MIN_DIST) {
+        mapLocation.zoom++;
+        lookAtPoint.x *= 2;
+        lookAtPoint.y *= 2;
+        cameraDelta.d *= 2;
+        hasChanged = true;
+      }
+      if (cameraDelta.d > MAX_DIST) {
+        mapLocation.zoom--;
+        lookAtPoint.x /= 2;
+        lookAtPoint.y /= 2;
+        cameraDelta.d /= 2;
+        hasChanged = true;
+      }
+      if (hasChanged) {
+        loadMap(mapLocation);
       }
     }
-
     function updateCamera() {
       camera.position.z = lookAtPoint.z + cameraDelta.d * Math.sin(cameraDelta.elevation);;
       camera.position.y = lookAtPoint.y + Math.cos(cameraDelta.heading)*Math.cos(cameraDelta.elevation)*cameraDelta.d;
@@ -44,8 +94,25 @@
       camera.lookAt(new THREE.Vector3(lookAtPoint.x, lookAtPoint.y, lookAtPoint.z));
     }
 
+    function getBounds(mapLoc, h, w) {
+      var lon = mapLoc.lon, lat = mapLoc.lat, zoom = mapLoc.zoom;
+      return {
+        leftLon: lon - (360 * w) / Math.pow(2, 9+zoom),
+        rightLon: lon + (360 * w) / Math.pow(2, 9+zoom),
+        downLat: 180 * Math.asin(Math.sin(lat * Math.PI / 180) - h / Math.pow(2, 7+zoom))/Math.PI,
+        upLat: 180 * Math.asin(Math.sin(lat * Math.PI / 180) + h / Math.pow(2, 7+zoom))/Math.PI,
+      };
+    }
+    function loadMap(mapLoc) {
+      console.log(mapLoc);
+      img.map = THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=' + mapLoc.lat + ',' + mapLoc.lon + '&zoom=' + mapLoc.zoom + '&size=640x640&key='+API_KEY);
+      img.map.needsUpdate = true;
+    }
+    var mapLocation = {lat: 40.022482, lon: -75.108077, zoom: 11};
+    var API_KEY = "AIzaSyB6PUUj1nfpIUw3gmF2e0s5AaoZe-CFyRA";
     var lookAtPoint = {x: 0, y: 50, z: 0};
     var cameraDelta = {d: 400, elevation: 45 * (Math.PI / 180), heading: 270 * (Math.PI / 180)};
+    loadMap(mapLocation);
     updateCamera();
 
     var ambientLight = new THREE.AmbientLight(0x555555);
@@ -205,9 +272,14 @@
         zoomIn(MOVESPEED);
       } else if (e.keyCode == 69) { // E
         zoomOut(MOVESPEED);
+      } else if (e.keyCode == 70) { // F
+        var bounds = getBounds(mapLocation,640,640);
+        mapLocation.lon = bounds.rightLon;
+        loadMap(mapLocation);
       } else {
         return;
       }
+      updateMap();
       updateCamera();
       e.preventDefault();
     });
