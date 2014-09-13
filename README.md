@@ -1,5 +1,3 @@
 PennApps 2014
-Zhan Xiong
-Ignatius
-Lianhan
-Jevon
+=============
+Worked on by Zhan Xiong, Ignatius, Lianhan and Jevon.
