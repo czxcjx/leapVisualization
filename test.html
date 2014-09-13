@@ -32,22 +32,6 @@
 				}
 				return arr;
 		}
-
-		// function to populate heat map
-		function getDataPoints(x1, x2, y1, y2) {
-			var numRows = 100;
-			var rowSize = (y2 - y1) / numRows;
-			var colSize = (x2 - x1) / numRows;
-			var dataPoints = Array.matrix(numRows, numRows, 0);
-			var x;
-			var y;
-			var arr = JSON;
-			for (var i = 0; i < JSON.length; i++) {
-				x = Math.floor((JSON[i].POINT_X - x1) / colSize);
-				y = Math.floor((JSON[i].POINT_Y - y1) / rowSize);
-				dataPoints[x][y]++;
-			}
-		}
     
     THREE.ImageUtils.crossOrigin = "anonymous";
     var img = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=40.714728,-73.998672&zoom=12&size=400x400')});
@@ -56,7 +40,32 @@
     plane.overdraw = true;
     scene.add(plane);
    
-    /*
+    var NUM_ROWS = 100;
+    var TILE_H = 640;
+    var TILE_W = 640;
+    var MAX_X = TILE_W/2;
+    var MIN_X = - TILE_W/2;
+    var MAX_Y = TILE_H/2;
+    var MIN_Y = - TILE_H/2;
+    var NORMAL_DIST = 400;
+    var MIN_DIST = 300;
+    var MAX_DIST = 600;
+
+    // function to populate heat map
+    function getDataPoints(x1, x2, y1, y2) {
+      var rowSize = (y2 - y1) / NUM_ROWS;
+      var colSize = (x2 - x1) / NUM_ROWS;
+      var dataPoints = Array.matrix(NUM_ROWS, NUM_ROWS, 0);
+      var x;
+      var y;
+      var arr = JSON;
+      for (var i = 0; i < JSON.length; i++) {
+        x = Math.floor((JSON[i].POINT_X - x1) / colSize);
+        y = Math.floor((JSON[i].POINT_Y - y1) / rowSize);
+        dataPoints[x][y]++;
+      }
+    }
+
     var sphereGeom = new THREE.SphereGeometry(3, 3, 2);
     var heatColors = [0xffffb2, 0xfecc5c, 0xfd8d3c, 0xf03b20, 0xbd0026];
     var sphereMat = [];
@@ -69,22 +78,13 @@
 //		 		var zVal = data[i + 50][j + 50];
         var k = Math.round(zVal / 70);
         var sphere = new THREE.Mesh(sphereGeom, sphereMat[k]);
-        sphere.position.x = i*8;
-        sphere.position.y = j*8;
+        sphere.position.x = i * (TILE_H / (NUM_ROWS*1.0));
+        sphere.position.y = j * (TILE_W / (NUM_ROWS*1.0));
         sphere.position.z = zVal;
-        //scene.add(sphere);
+        scene.add(sphere);
       }
-    }*/
+    }
 
-    var TILE_H = 640;
-    var TILE_W = 640;
-    var MAX_X = TILE_W/2;
-    var MIN_X = - TILE_W/2;
-    var MAX_Y = TILE_H/2;
-    var MIN_Y = - TILE_H/2;
-    var NORMAL_DIST = 400;
-    var MIN_DIST = 300;
-    var MAX_DIST = 600;
     function updateMap() {
       var hasChanged = false;
       if (lookAtPoint.x > MAX_X) {
