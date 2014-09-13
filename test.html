@@ -1,11 +1,20 @@
 <html>
 <head>
   <title>LeapViz</title>
-</head>
-<body>
   <script src="three.min.js"></script>
   <script src="leap-0.6.2.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script>
+    function reset() {
+      console.log("resetting map");
+      mapLoc = {lat: 40.022482, lon: -75.108077, zoom: 11} // resets to philadelphia
+      loadMap(mapLoc);
+    }
+  </script>
+</head>
+<body>
+  <button type="button" onClick="reset()">Reset map</button>
+  <div id="coordinates"></div>
   <script>
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 10000);
@@ -73,26 +82,27 @@
         planes[i][j].position.y = (j-1) * TILE_H;
       }
     }
-    //var plane = new THREE.Mesh(new THREE.PlaneGeometry(640,640), img);
-    //plane.overdraw = true;
-    //scene.add(plane);
-   
-    /*
+    
+/*
     var sphereGeom = new THREE.SphereGeometry(3, 3, 2);
     var heatColors = [0xffffb2, 0xfecc5c, 0xfd8d3c, 0xf03b20, 0xbd0026];
     var sphereMat = [];
+		//TODO: obtain bounds and query database
+		//var data = getDataPoints(x1,x2,y1,y2);
     for (var i = 0; i < 5; i++) sphereMat[i] = new THREE.MeshBasicMaterial({color: heatColors[i]});
     for (var i = -50; i < 50; i++) {
       for (var j = -50; j < 50; j++) {
         var zVal = Math.exp(-(i*i + j*j)/1000)*300;
+//		 		var zVal = data[i + 50][j + 50];
         var k = Math.round(zVal / 70);
         var sphere = new THREE.Mesh(sphereGeom, sphereMat[k]);
-        sphere.position.x = i*8;
-        sphere.position.y = j*8;
+        sphere.position.x = i * (TILE_H / (NUM_ROWS*1.0));
+        sphere.position.y = j * (TILE_W / (NUM_ROWS*1.0));
         sphere.position.z = zVal;
-        //scene.add(sphere);
+        scene.add(sphere);
       }
-    }*/
+    }
+*/
     function updateCache(dx,dy) {
       if (dx === undefined) dx = 1000;
       if (dy === undefined) dy = 1000;
@@ -127,6 +137,7 @@
         }
       }
     }
+
     function updateMap() {
       if (lookAtPoint.x > MAX_X) {
         lookAtPoint.x -= TILE_W;
@@ -163,6 +174,7 @@
         updateCache();
       }
     }
+
     function updateCamera() {
       camera.position.z = lookAtPoint.z + cameraDelta.d * Math.sin(cameraDelta.elevation);;
       camera.position.y = lookAtPoint.y + Math.cos(cameraDelta.heading)*Math.cos(cameraDelta.elevation)*cameraDelta.d;
@@ -202,6 +214,7 @@
     var ambientLight = new THREE.AmbientLight(0x555555);
     scene.add(ambientLight);
 
+    // speed of frame changing
     var MOVESPEED = 20;
     var SCROLLSPEED = 20;
     var ROTATESPEED = 0.1;
@@ -246,69 +259,154 @@
       cameraDelta.d = clamp(30, cameraDelta.d+speed, 1500);
     }
 
+    // variables to use in the leap loop
     var previousFrame = null;
+    var performedAction = false;
+    var info, palm, phalanges = [];
+
+    function initPalm() {
+      console.log("initializing palm");
+      // palm
+      geometry = new THREE.BoxGeometry( 80, 20, 80 );
+      geometry.applyMatrix( new THREE.Matrix4().makeTranslation( 0, 0, -30 ) );  // to to +30 if using pitch roll & yaw
+      material = new THREE.MeshNormalMaterial();
+      palm = new THREE.Mesh( geometry, material );
+      palm.castShadow = true;
+      palm.receiveShadow = true;
+      scene.add( palm );
+    }
+    function initPhalanges() {
+      // phalanges
+      geometry = new THREE.BoxGeometry( 16, 12, 1 );
+      for ( var i = 0; i < 15; i++) {
+        mesh = new THREE.Mesh( geometry, material );
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add( mesh );
+        phalanges.push( mesh );
+      }
+    }
+    initPalm();
+    initPhalanges();
+
+    // TODO: LLH
+    function performAction(x, y) {
+      alert("selected point at " + x + ", " + y);
+    }
+
     Leap.loop({enableGestures: true}, function(frame) {
       console.log("inside loop");
-      // Frame motion factors
+      // DRAWING OF HAND TO ACT AS CURSOR
+      var hand, phalanx, point, length;
+      if ( frame.hands.length ) {
+        hand = frame.hands[0];
+        palm.position.set( hand.palmPosition[0], hand.palmPosition[1], hand.palmPosition[2] );
+        direction = new THREE.Vector3( hand.direction[0], hand.direction[1], hand.direction[2] );  // best so far
+        palm.lookAt( direction.add( palm.position ) );
+        palm.rotation.z = -hand.roll();
+      }
+      iLen = ( frame.pointables.length < 5 ) ? frame.pointables.length : 5;
+      for (var i = 0; i < iLen; i++) {
+        for ( var j = 0; j < 3; j++) {
+          phalanx = phalanges[ 3 * i + j];
+          if (frame.pointables[i].positions) {
+            point = frame.pointables[i].positions[j];
+            phalanx.position.set( point[0], point[1], point[2] );
+            point = frame.pointables[i].positions[ j + 1 ];
+            point = new THREE.Vector3( point[0], point[1], point[2] );
+            phalanx.lookAt( point );
+            length = phalanx.position.distanceTo( point );
+            phalanx.translateZ( 0.5 * length );
+            phalanx.scale.set( 1, 1, length );
+          }
+        }
+      }
+
+      // MAIN GESTURE RECOGNITION
       if (previousFrame && previousFrame.valid) {
         var translation = frame.translation(previousFrame);
         var rotationAxis = frame.rotationAxis(previousFrame);
         var rotationAngle = frame.rotationAngle(previousFrame);
 
-        if (frame.hands.length == 1) {
-          // perform rotation and tilt if it detects one hand
+        if (frame.hands.length == 1) { // detect one hand
+          // actions allowed: rotation, tilt and selection
           var hand = frame.hands[0];
           if (hand) {
             var pitch = hand.pitch();
             var yaw = hand.yaw();
             var roll = hand.roll();  
+
+            // output hand position
+            var handPosition = hand.palmPosition;
+            var posString = "(" + handPosition[0] + ", " + handPosition[1] + ", " + handPosition[2] + ")" 
+            var handOutput = document.getElementById("coordinates");
+            handOutput.innerHTML = posString;
+          }
+          if (frame.pointables.length > 0) { // check for how many fingers are extended
+            var countFingersExtended = 0;
+            for (var i = 0; i < frame.pointables.length; i++) {
+              var pointable = frame.pointables[i];
+              if (pointable.extended && !pointable.tool) {
+                countFingersExtended++;
+              }
+            }
+            console.log("number of fingers extended: " + countFingersExtended);
           }
           // perform rotate up and down if it detects circles
           if (frame.gestures.length > 0) {
             var gestureString = "";
             for (var i = 0; i < frame.gestures.length; i++) {
               var gesture = frame.gestures[i];
-              switch (gesture.type) {
-                case "circle":
-                  var clockwise = false;
-                  var pointableID = gesture.pointableIds[0];
-                  var direction = frame.pointable(pointableID).direction;
-                  var dotProduct = Leap.vec3.dot(direction, gesture.normal);
-                  if (dotProduct  >  0) clockwise = true;
-                  if (clockwise) {
-                    rotateUp(ROTATEFRONTBACKSPEED);
-                  } else {
-                    rotateDown(ROTATEFRONTBACKSPEED);
-                  }
-                  break;
-                case "screenTap":
-                  // handle screen tap and selection
-                default:
-                  console.log("unkown gesture type");
+              if (gesture.type == "circle") {
+                var clockwise = false;
+                var pointableID = gesture.pointableIds[0];
+                var direction = frame.pointable(pointableID).direction;
+                var dotProduct = Leap.vec3.dot(direction, gesture.normal);
+                if (dotProduct  >  0) clockwise = true;
+                if (clockwise) {
+                  rotateUp(ROTATEFRONTBACKSPEED);
+                } else {
+                  rotateDown(ROTATEFRONTBACKSPEED);
+                }
+              } else if (gesture.type == "screenTap") { // check for screen tap
+                // var duration = gesture.duration; 
+                console.log("performing selection");
+                // get coordinates of location selected
+                var currMapBounds = getBounds(mapLocation, TILE_H, TILE_W);
+                var distLon = currMapBounds.rightLon - currMapBounds.leftLon;
+                var distLat = currMapBounds.upLat - currMapBounds.downLat;
+                if (hand) {
+                  var handPosition = hand.palmPosition;
+                  // TODO JEVON: change the hand bounds to not be half of the map only
+                  var DIFF = 400.0;
+                  var LOWER_X_BOUND = -200;
+                  var LOWER_Y_BOUND = 0; 
+                  var selectedLon = (((handPosition[0] - LOWER_Y_BOUND) / DIFF) * distLon) + currMapBounds.leftLon;
+                  var selectedLat = (((handPosition[1] - LOWER_X_BOUND) / DIFF) * distLat) + currMapBounds.downLat;
+                  performAction(selectedLat, selectedLon);
+                }
+              } else {
+                console.log("unknown gesture type");
               }
             }
-          } else if (roll > 0.5) {
-            // tilt left
-            panLeft(SCROLLSPEED);
-            console.log("shifting left");
-          } else if (roll < -0.5) {
-            // tilt right
-            panRight(SCROLLSPEED);
-            console.log("shifting right");
-          } else if (pitch > 0.5) {
-            // tilt back
-            panBackward(SCROLLSPEED);
-            console.log("tilting backward");
-          } else if (pitch < -0.5) {
-            // tilt forward
-            panForward(SCROLLSPEED);
-            console.log("tilting forward");
-          } else if (yaw < -0.5) {
-            // rotating counterclockwise
-            rotateLeft(ROTATESPEED);
-          } else if (yaw > 0.5) {
-            // rotating clockwise
-            rotateRight(ROTATESPEED);
+          } else if (countFingersExtended > 1) {
+            if (roll > 0.5) { // tilt left
+              panLeft(SCROLLSPEED);
+              console.log("shifting left");
+            } else if (roll < -0.5) { // tilt right
+              panRight(SCROLLSPEED);
+              console.log("shifting right");
+            } else if (pitch > 0.5) { // tilt back
+              panBackward(SCROLLSPEED);
+              console.log("tilting backward");
+            } else if (pitch < -0.5) { // tilt forward
+              panForward(SCROLLSPEED);
+              console.log("tilting forward");
+            } else if (yaw < -0.5) { // rotating counterclockwise
+              rotateLeft(ROTATESPEED);
+            } else if (yaw > 0.5) { // rotating clockwise
+              rotateRight(ROTATESPEED);
+            }
           }
         } else if (frame.hands.length == 2) {
           // perform zooming in and out if two hands detected
@@ -332,6 +430,7 @@
       
       // Store frame for motion functions
       previousFrame = frame;
+      updateMap();
       updateCamera();
     });
 
@@ -358,6 +457,12 @@
         zoomIn(MOVESPEED);
       } else if (e.keyCode == 69) { // E
         zoomOut(MOVESPEED);
+      } else if (e.keyCode == 70) { // F
+        var bounds = getBounds(mapLocation,TILE_H,TILE_W);
+        mapLocation.lon = bounds.rightLon;
+        loadMap(mapLocation);
+      } else if (e.keyCode == 76) { // L
+        performAction(40.022482, -75.108077); // hardcoded coords for testing
       } else {
         return;
       }
