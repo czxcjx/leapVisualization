@@ -13,6 +13,34 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
+		Array.matrix = function(numrows, numcols, initial){
+			 var arr = [];
+			 for (var i = 0; i < numrows; ++i){
+					var columns = [];
+					for (var j = 0; j < numcols; ++j){
+						 columns[j] = initial;
+					}
+					arr[i] = columns;
+				}
+				return arr;
+		}
+
+		// function to populate heat map
+		function getDataPoints(x1, x2, y1, y2) {
+			var numRows = 100;
+			var rowSize = (y2 - y1) / numRows;
+			var colSize = (x2 - x1) / numRows;
+			var dataPoints = Array.matrix(numRows, numRows, 0);
+			var x;
+			var y;
+			var arr = JSON;
+			for (var i = 0; i < JSON.length; i++) {
+				x = Math.floor(JSON[i].POINT_X / colSize);
+				y = Math.floor(JSON[i].POINT_Y / rowSize);
+				dataPoints[x][y]++;
+			}
+		}
+    
     THREE.ImageUtils.crossOrigin = "anonymous";
     var img = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=40.714728,-73.998672&zoom=12&size=400x400')});
     img.map.needsUpdate = true;
@@ -197,6 +225,8 @@
                     rotateDown(ROTATEFRONTBACKSPEED);
                   }
                   break;
+                case "screenTap":
+                  // handle screen tap and selection
                 default:
                   console.log("unkown gesture type");
               }
