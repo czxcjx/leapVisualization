@@ -3,8 +3,16 @@
   <title>Testing page</title>
 </head>
 <body>
+  <div id="main">
+    <h3>Frame data:</h3>
+    <div id="frameData"></div>
+    <div style="clear:both;"></div>
+  </div>
+
   <script src="three.min.js"></script>
+  <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script src="leap-0.6.2.js"></script>
   <script>
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
@@ -37,6 +45,84 @@
     scene.add(ambientLight);
 
     var MOVESPEED = 20;
+    var SCROLLSPEED = 5;
+
+    function vectorToString(vector, digits) {
+      if (typeof digits === "undefined") {
+        digits = 1;
+      }
+      return "(" + vector[0].toFixed(digits) + ", "
+                 + vector[1].toFixed(digits) + ", "
+                 + vector[2].toFixed(digits) + ")";
+    }
+
+    var previousFrame = null;
+    Leap.loop({enableGestures: true}, function(frame) {
+      console.log("inside loop");
+      // Display Frame object data
+      var frameOutput = document.getElementById("frameData");
+
+      var frameString = "Frame ID: " + frame.id  + "<br />"
+                      + "Timestamp: " + frame.timestamp + " &micro;s<br />"
+                      + "Hands: " + frame.hands.length + "<br />"
+                      + "Fingers: " + frame.fingers.length + "<br />"
+                      + "Tools: " + frame.tools.length + "<br />"
+                      + "Gestures: " + frame.gestures.length + "<br />";
+
+      // Frame motion factors
+      if (previousFrame && previousFrame.valid) {
+        var hand = frame.hands[0];
+        if (hand) {
+          var pitch = hand.pitch();
+          var yaw = hand.yaw();
+          var roll = hand.roll();  
+        }
+        
+
+        var translation = frame.translation(previousFrame);
+        frameString += "Translation: " + vectorToString(translation) + " mm <br />";
+
+        var rotationAxis = frame.rotationAxis(previousFrame);
+        var rotationAngle = frame.rotationAngle(previousFrame);
+        if (frame.hands.length > 0) {
+          if (roll > 0.5) {
+            // tilt left
+            lookAtPoint.x += SCROLLSPEED * Math.cos(cameraDelta.angle);
+            lookAtPoint.y -= SCROLLSPEED * Math.sin(cameraDelta.angle);
+            console.log("shifting left");
+          } else if (roll < -0.5) {
+            // tilt right
+            lookAtPoint.x -= SCROLLSPEED * Math.cos(cameraDelta.angle);
+            lookAtPoint.y += SCROLLSPEED * Math.sin(cameraDelta.angle);
+            console.log("shifting right");
+          } else if (pitch > 0.5) {
+            // tilt back
+            lookAtPoint.x += SCROLLSPEED * Math.sin(cameraDelta.angle);
+            lookAtPoint.y += SCROLLSPEED * Math.cos(cameraDelta.angle);
+            console.log("tilting backward");
+          } else if (pitch < -0.5) {
+            // tilt forward
+            lookAtPoint.x -= SCROLLSPEED * Math.sin(cameraDelta.angle);
+            lookAtPoint.y -= SCROLLSPEED * Math.cos(cameraDelta.angle);
+            console.log("tilting forward");
+          }
+        }
+
+        frameString += "Pitch: " + pitch + "<br />";
+        frameString += "Yaw: " + yaw + "<br />";
+        frameString += "Roll: " + roll + "<br />";
+        frameString += "Rotation axis: " + vectorToString(rotationAxis, 2) + "<br />";
+        frameString += "Rotation angle: " + rotationAngle.toFixed(2) + " radians<br />";
+
+        var scaleFactor = frame.scaleFactor(previousFrame);
+        frameString += "Scale factor: " + scaleFactor.toFixed(2) + "<br />";
+      }
+      frameOutput.innerHTML = "<div style='width:300px; float:left; padding:5px'>" + frameString + "</div>";
+      
+      // Store frame for motion functions
+      previousFrame = frame;
+      updateCamera();
+    });
 
     $(document).keydown(function(e) {
       if (e.keyCode == 37) { // left
