@@ -5,8 +5,9 @@
   var height = 800;
   var width = 800;
 
-  var leftLat = lat - (360 * width) / pow(2, 9+zoom);
-  var rightLat = lat + (360 * width) / pow(2, 9+zoom);
-  var downLon = Math.asin(Math.sin(lon) - height / pow(2, 9+zoom));
-  var upLon = Math.asin(Math.sin(lon) + height / pow(2, 9+zoom));
+  var leftLat = lat - (360 * width) / Math.pow(2, 9+zoom);
+  var rightLat = lat + (360 * width) / Math.pow(2, 9+zoom);
+  var downLon = 180 * Math.asin(Math.sin(lon * Math.PI / 180) - height / Math.pow(2, 9+zoom))/Math.PI;
+  var upLon = 180 * Math.asin(Math.sin(lon * Math.PI / 180) + height / Math.pow(2, 9+zoom))/Math.PI;
+  console.log(leftLat, rightLat, downLon, upLon);
 </script>
