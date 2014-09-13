@@ -53,6 +53,9 @@
     scene.add(ambientLight);
 
     var MOVESPEED = 20;
+    var SCROLLSPEED = 20;
+    var ROTATESPEED = 0.1;
+    var ZOOMSPEED = 10;
 
     function clamp(mn, val, mx) {
       return Math.min(mx, Math.max(val, mn));
@@ -91,6 +94,79 @@
     function zoomOut(speed) {
       cameraDelta.d = clamp(30, cameraDelta.d+speed, 1500);
     }
+
+    var previousFrame = null;
+    Leap.loop({enableGestures: true}, function(frame) {
+      console.log("inside loop");
+      // Frame motion factors
+      if (previousFrame && previousFrame.valid) {
+        var translation = frame.translation(previousFrame);
+        var rotationAxis = frame.rotationAxis(previousFrame);
+        var rotationAngle = frame.rotationAngle(previousFrame);
+
+        if (frame.hands.length == 1) {
+          // perform rotation and tilt
+          var hand = frame.hands[0];
+          if (hand) {
+            var pitch = hand.pitch();
+            var yaw = hand.yaw();
+            var roll = hand.roll();  
+          }
+          if (roll > 0.5) {
+            // tilt left
+            lookAtPoint.x += SCROLLSPEED * Math.cos(cameraDelta.angle);
+            lookAtPoint.y -= SCROLLSPEED * Math.sin(cameraDelta.angle);
+            console.log("shifting left");
+          } else if (roll < -0.5) {
+            // tilt right
+            lookAtPoint.x -= SCROLLSPEED * Math.cos(cameraDelta.angle);
+            lookAtPoint.y += SCROLLSPEED * Math.sin(cameraDelta.angle);
+            console.log("shifting right");
+          } else if (pitch > 0.5) {
+            // tilt back
+            lookAtPoint.x += SCROLLSPEED * Math.sin(cameraDelta.angle);
+            lookAtPoint.y += SCROLLSPEED * Math.cos(cameraDelta.angle);
+            console.log("tilting backward");
+          } else if (pitch < -0.5) {
+            // tilt forward
+            lookAtPoint.x -= SCROLLSPEED * Math.sin(cameraDelta.angle);
+            lookAtPoint.y -= SCROLLSPEED * Math.cos(cameraDelta.angle);
+            console.log("tilting forward");
+          } else if (yaw < -0.5) {
+            // rotating counterclockwise
+            cameraDelta.angle += ROTATESPEED;
+          } else if (yaw > 0.5) {
+            // rotating clockwise
+            cameraDelta.angle -= ROTATESPEED;
+          }
+        } else if (frame.hands.length == 2) {
+          // perform zooming in and out
+          for (var i = 0; i < frame.hands.length; i++) {
+            var hand = frame.hands[i];
+            if (previousFrame && previousFrame.valid) {
+              var translation = hand.translation(previousFrame);
+              if ((hand.type == "right" && translation[0] > 0.5) || (hand.type == "left" && translation[0] < -0.5)) {
+                // zooming out
+                if (cameraDelta.z < 400) {
+                  cameraDelta.z += ZOOMSPEED;  
+                  console.log("zooming out");
+                }
+              } else if ((hand.type == "right" && translation[0] < -0.5) || (hand.type == "left" && translation[0] > 0.5)) {
+                // zoom in
+                if (cameraDelta.z > -10) {
+                  cameraDelta.z -= ZOOMSPEED;  
+                  console.log("zooming in");
+                }
+              }
+            }  
+          }
+        }
+      }
+      
+      // Store frame for motion functions
+      previousFrame = frame;
+      updateCamera();
+    });
 
     $(document).keydown(function(e) {
       if (e.keyCode == 37) { // left
