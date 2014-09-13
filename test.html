@@ -35,8 +35,8 @@
 			var y;
 			var arr = JSON;
 			for (var i = 0; i < JSON.length; i++) {
-				x = Math.floor(JSON[i].POINT_X / colSize);
-				y = Math.floor(JSON[i].POINT_Y / rowSize);
+				x = Math.floor((JSON[i].POINT_X - x1) / colSize);
+				y = Math.floor((JSON[i].POINT_Y - y1) / rowSize);
 				dataPoints[x][y]++;
 			}
 		}
@@ -52,10 +52,13 @@
     var sphereGeom = new THREE.SphereGeometry(3, 3, 2);
     var heatColors = [0xffffb2, 0xfecc5c, 0xfd8d3c, 0xf03b20, 0xbd0026];
     var sphereMat = [];
+		//TODO: obtain bounds and query database
+		//var data = getDataPoints(x1,x2,y1,y2);
     for (var i = 0; i < 5; i++) sphereMat[i] = new THREE.MeshBasicMaterial({color: heatColors[i]});
     for (var i = -50; i < 50; i++) {
       for (var j = -50; j < 50; j++) {
         var zVal = Math.exp(-(i*i + j*j)/1000)*300;
+//		 		var zVal = data[i + 50][j + 50];
         var k = Math.round(zVal / 70);
         var sphere = new THREE.Mesh(sphereGeom, sphereMat[k]);
         sphere.position.x = i*8;
