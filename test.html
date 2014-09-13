@@ -1,14 +1,22 @@
 <html>
 <head>
   <title>LeapViz</title>
+  <style>
+    body {
+      background-color: #000000
+    }
+  </style>
   <script src="three.min.js"></script>
   <script src="leap-0.6.2.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
   <script>
     function reset() {
       console.log("resetting map");
-      mapLoc = {lat: 40.022482, lon: -75.108077, zoom: 11} // resets to philadelphia
-      loadMap(mapLoc);
+      mapLocation = {lat: 40.022482, lon: -75.108077, zoom: 11} // resets to philadelphia
+      lookAtPoint = {x: 0, y: 0, z: 0};
+      cameraDelta = {d: NORMAL_DIST, elevation: 45 * (Math.PI / 180), heading: 180 * (Math.PI / 180)};
+      updateCache();
+      updateCamera();
     }
   </script>
 </head>
@@ -33,23 +41,8 @@
 				}
 				return arr;
 		}
-
-		// function to populate heat map
-		function getDataPoints(x1, x2, y1, y2) {
-			var numRows = 100;
-			var rowSize = (y2 - y1) / numRows;
-			var colSize = (x2 - x1) / numRows;
-			var dataPoints = Array.matrix(numRows, numRows, 0);
-			var x;
-			var y;
-			var arr = JSON;
-			for (var i = 0; i < JSON.length; i++) {
-				x = Math.floor(JSON[i].POINT_X / colSize);
-				y = Math.floor(JSON[i].POINT_Y / rowSize);
-				dataPoints[x][y]++;
-			}
-		}
  
+    var NUM_ROWS = 100.0;
     var TILE_H = 640;
     var TILE_W = 640;
     var MAX_X = TILE_W*0.75;
@@ -59,6 +52,21 @@
     var NORMAL_DIST = 300;
     var MIN_DIST = 200;
     var MAX_DIST = 400;   
+
+    // function to populate heat map
+    function getDataPoints(x1, x2, y1, y2) {
+      var rowSize = (y2 - y1) / NUM_ROWS;
+      var colSize = (x2 - x1) / NUM_ROWS;
+      var dataPoints = Array.matrix(numRows, numRows, 0);
+      var x;
+      var y;
+      var arr = JSON;
+      for (var i = 0; i < JSON.length; i++) {
+        x = Math.floor(JSON[i].POINT_X / colSize);
+        y = Math.floor(JSON[i].POINT_Y / rowSize);
+        dataPoints[x][y]++;
+      }
+    }
 
     THREE.ImageUtils.crossOrigin = "anonymous";
     var randomTexture = THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=0,0&zoom=12&size=640x640');
@@ -83,7 +91,7 @@
       }
     }
     
-/*
+
     var sphereGeom = new THREE.SphereGeometry(3, 3, 2);
     var heatColors = [0xffffb2, 0xfecc5c, 0xfd8d3c, 0xf03b20, 0xbd0026];
     var sphereMat = [];
@@ -102,7 +110,7 @@
         scene.add(sphere);
       }
     }
-*/
+
     function updateCache(dx,dy) {
       if (dx === undefined) dx = 1000;
       if (dy === undefined) dy = 1000;
@@ -374,7 +382,7 @@
                 // get coordinates of location selected
                 var currMapBounds = getBounds(mapLocation, TILE_H, TILE_W);
                 var distLon = currMapBounds.rightLon - currMapBounds.leftLon;
-                var distLat = currMapBounds.upLat - currMapBounds.downLat;
+                var distLat = (currMapBounds.upLat - currMapBounds.downLat) / 2.0;
                 if (hand) {
                   var handPosition = hand.palmPosition;
                   // TODO JEVON: change the hand bounds to not be half of the map only
