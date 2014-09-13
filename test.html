@@ -1,6 +1,6 @@
 <html>
 <head>
-  <title>Testing page</title>
+  <title>LeapViz</title>
 </head>
 <body>
   <script src="three.min.js"></script>
@@ -13,7 +13,6 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    
     THREE.ImageUtils.crossOrigin = "anonymous";
     var img = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=40.714728,-73.998672&zoom=12&size=400x400')});
     img.map.needsUpdate = true;
@@ -36,7 +35,6 @@
         scene.add(sphere);
       }
     }
-
 
     function updateCamera() {
       camera.position.z = lookAtPoint.z + cameraDelta.d * Math.sin(cameraDelta.elevation);;
