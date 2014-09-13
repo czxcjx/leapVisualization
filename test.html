@@ -1,11 +1,19 @@
 <html>
 <head>
   <title>LeapViz</title>
-</head>
-<body>
   <script src="three.min.js"></script>
   <script src="leap-0.6.2.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <script>
+    function reset() {
+      console.log("resetting map");
+      mapLoc = {lat: 40.022482, lon: -75.108077, zoom: 11}
+      loadMap(mapLoc);
+    }
+  </script>
+</head>
+<body>
+  <button type="button" onClick="reset()">Reset map</button>
   <script>
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 10000);
@@ -146,6 +154,7 @@
     var ambientLight = new THREE.AmbientLight(0x555555);
     scene.add(ambientLight);
 
+    // speed of frame changing
     var MOVESPEED = 20;
     var SCROLLSPEED = 20;
     var ROTATESPEED = 0.1;
@@ -190,9 +199,65 @@
       cameraDelta.d = clamp(30, cameraDelta.d+speed, 1500);
     }
 
+    // variables to use in the leap loop
     var previousFrame = null;
+    var performedAction = false;
+    var info, palm, phalanges = [];
+
+    function initPalm() {
+      console.log("initializing palm");
+      // palm
+      geometry = new THREE.BoxGeometry( 80, 20, 80 );
+      geometry.applyMatrix( new THREE.Matrix4().makeTranslation( 0, 0, -30 ) );  // to to +30 if using pitch roll & yaw
+      material = new THREE.MeshNormalMaterial();
+      palm = new THREE.Mesh( geometry, material );
+      palm.castShadow = true;
+      palm.receiveShadow = true;
+      scene.add( palm );
+    }
+    function initPhalanges() {
+      // phalanges
+      geometry = new THREE.BoxGeometry( 16, 12, 1 );
+      for ( var i = 0; i < 15; i++) {
+        mesh = new THREE.Mesh( geometry, material );
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        scene.add( mesh );
+        phalanges.push( mesh );
+      }
+    }
+    initPalm();
+    initPhalanges();
+
     Leap.loop({enableGestures: true}, function(frame) {
       console.log("inside loop");
+      // handle drawing of hand to act as cursor
+      var hand, phalanx, point, length;
+      if ( frame.hands.length ) {
+        hand = frame.hands[0];
+        palm.position.set( hand.palmPosition[0], hand.palmPosition[1], hand.palmPosition[2] );
+  //      palm.rotation.set( hand.pitch(), -hand.yaw(), hand.roll() );
+        direction = new THREE.Vector3( hand.direction[0], hand.direction[1], hand.direction[2] );  // best so far
+        palm.lookAt( direction.add( palm.position ) );
+        palm.rotation.z = -hand.roll();
+      }
+      iLen = ( frame.pointables.length < 5 ) ? frame.pointables.length : 5;
+      for (var i = 0; i < iLen; i++) {
+        for ( var j = 0; j < 3; j++) {
+          phalanx = phalanges[ 3 * i + j];
+          if (frame.pointables[i].positions) {
+            point = frame.pointables[i].positions[j];
+            phalanx.position.set( point[0], point[1], point[2] );
+            point = frame.pointables[i].positions[ j + 1 ];
+            point = new THREE.Vector3( point[0], point[1], point[2] );
+            phalanx.lookAt( point );
+            length = phalanx.position.distanceTo( point );
+            phalanx.translateZ( 0.5 * length );
+            phalanx.scale.set( 1, 1, length );
+          }
+        }
+      }
+
       // Frame motion factors
       if (previousFrame && previousFrame.valid) {
         var translation = frame.translation(previousFrame);
@@ -225,10 +290,16 @@
                     rotateDown(ROTATEFRONTBACKSPEED);
                   }
                   break;
-                case "screenTap":
-                  // handle screen tap and selection
+                case "screenTap": // handle screen tap and selection
+                  var duration = gesture.duration;
+                  // perform action if screenTap for more than 1 second
+                  if (duration > 1*10^6 && !performedAction) {
+                    console.log("performing action");
+                    // update variable so we don't perform this action multiple times
+                    performedAction = true;
+                  }
                 default:
-                  console.log("unkown gesture type");
+                  console.log("unknown gesture type");
               }
             }
           } else if (roll > 0.5) {
@@ -276,6 +347,7 @@
       
       // Store frame for motion functions
       previousFrame = frame;
+      updateMap();
       updateCamera();
     });
 
