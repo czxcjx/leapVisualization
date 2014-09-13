@@ -3,12 +3,6 @@
   <title>Testing page</title>
 </head>
 <body>
-  <div id="main">
-    <h3>Frame data:</h3>
-    <div id="frameData"></div>
-    <div style="clear:both;"></div>
-  </div>
-
   <script src="three.min.js"></script>
   <script src="http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
@@ -61,7 +55,9 @@
     scene.add(ambientLight);
 
     var MOVESPEED = 20;
-    var SCROLLSPEED = 5;
+    var SCROLLSPEED = 20;
+    var ROTATESPEED = 0.1;
+    var ZOOMSPEED = 10;
 
     function vectorToString(vector, digits) {
       if (typeof digits === "undefined") {
@@ -75,32 +71,20 @@
     var previousFrame = null;
     Leap.loop({enableGestures: true}, function(frame) {
       console.log("inside loop");
-      // Display Frame object data
-      var frameOutput = document.getElementById("frameData");
-
-      var frameString = "Frame ID: " + frame.id  + "<br />"
-                      + "Timestamp: " + frame.timestamp + " &micro;s<br />"
-                      + "Hands: " + frame.hands.length + "<br />"
-                      + "Fingers: " + frame.fingers.length + "<br />"
-                      + "Tools: " + frame.tools.length + "<br />"
-                      + "Gestures: " + frame.gestures.length + "<br />";
-
       // Frame motion factors
       if (previousFrame && previousFrame.valid) {
-        var hand = frame.hands[0];
-        if (hand) {
-          var pitch = hand.pitch();
-          var yaw = hand.yaw();
-          var roll = hand.roll();  
-        }
-        
-
         var translation = frame.translation(previousFrame);
-        frameString += "Translation: " + vectorToString(translation) + " mm <br />";
-
         var rotationAxis = frame.rotationAxis(previousFrame);
         var rotationAngle = frame.rotationAngle(previousFrame);
-        if (frame.hands.length > 0) {
+
+        if (frame.hands.length == 1) {
+          // perform rotation and tilt
+          var hand = frame.hands[0];
+          if (hand) {
+            var pitch = hand.pitch();
+            var yaw = hand.yaw();
+            var roll = hand.roll();  
+          }
           if (roll > 0.5) {
             // tilt left
             lookAtPoint.x += SCROLLSPEED * Math.cos(cameraDelta.angle);
@@ -121,19 +105,36 @@
             lookAtPoint.x -= SCROLLSPEED * Math.sin(cameraDelta.angle);
             lookAtPoint.y -= SCROLLSPEED * Math.cos(cameraDelta.angle);
             console.log("tilting forward");
+          } else if (yaw < -0.5) {
+            // rotating counterclockwise
+            cameraDelta.angle += ROTATESPEED;
+          } else if (yaw > 0.5) {
+            // rotating clockwise
+            cameraDelta.angle -= ROTATESPEED;
+          }
+        } else if (frame.hands.length == 2) {
+          // perform zooming in and out
+          for (var i = 0; i < frame.hands.length; i++) {
+            var hand = frame.hands[i];
+            if (previousFrame && previousFrame.valid) {
+              var translation = hand.translation(previousFrame);
+              if ((hand.type == "right" && translation[0] > 0.5) || (hand.type == "left" && translation[0] < -0.5)) {
+                // zooming out
+                if (cameraDelta.z < 400) {
+                  cameraDelta.z += ZOOMSPEED;  
+                  console.log("zooming out");
+                }
+              } else if ((hand.type == "right" && translation[0] < -0.5) || (hand.type == "left" && translation[0] > 0.5)) {
+                // zoom in
+                if (cameraDelta.z > -10) {
+                  cameraDelta.z -= ZOOMSPEED;  
+                  console.log("zooming in");
+                }
+              }
+            }  
           }
         }
-
-        frameString += "Pitch: " + pitch + "<br />";
-        frameString += "Yaw: " + yaw + "<br />";
-        frameString += "Roll: " + roll + "<br />";
-        frameString += "Rotation axis: " + vectorToString(rotationAxis, 2) + "<br />";
-        frameString += "Rotation angle: " + rotationAngle.toFixed(2) + " radians<br />";
-
-        var scaleFactor = frame.scaleFactor(previousFrame);
-        frameString += "Scale factor: " + scaleFactor.toFixed(2) + "<br />";
       }
-      frameOutput.innerHTML = "<div style='width:300px; float:left; padding:5px'>" + frameString + "</div>";
       
       // Store frame for motion functions
       previousFrame = frame;
