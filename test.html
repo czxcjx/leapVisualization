@@ -57,6 +57,7 @@
     var SCROLLSPEED = 20;
     var ROTATESPEED = 0.1;
     var ZOOMSPEED = 10;
+    var ROTATEFRONTBACKSPEED = 0.005;
 
     function clamp(mn, val, mx) {
       return Math.min(mx, Math.max(val, mn));
@@ -106,58 +107,72 @@
         var rotationAngle = frame.rotationAngle(previousFrame);
 
         if (frame.hands.length == 1) {
-          // perform rotation and tilt
+          // perform rotation and tilt if it detects one hand
           var hand = frame.hands[0];
           if (hand) {
             var pitch = hand.pitch();
             var yaw = hand.yaw();
             var roll = hand.roll();  
           }
-          if (roll > 0.5) {
+          // perform rotate up and down if it detects circles
+          if (frame.gestures.length > 0) {
+            var gestureString = "";
+            for (var i = 0; i < frame.gestures.length; i++) {
+              var gesture = frame.gestures[i];
+              switch (gesture.type) {
+                case "circle":
+                  var clockwise = false;
+                  var pointableID = gesture.pointableIds[0];
+                  var direction = frame.pointable(pointableID).direction;
+                  var dotProduct = Leap.vec3.dot(direction, gesture.normal);
+                  if (dotProduct  >  0) clockwise = true;
+                  if (clockwise) {
+                    rotateUp(ROTATEFRONTBACKSPEED);
+                  } else {
+                    rotateDown(ROTATEFRONTBACKSPEED);
+                  }
+                  break;
+                default:
+                  console.log("unkown gesture type");
+              }
+            }
+          } else if (roll > 0.5) {
             // tilt left
-            lookAtPoint.x += SCROLLSPEED * Math.cos(cameraDelta.angle);
-            lookAtPoint.y -= SCROLLSPEED * Math.sin(cameraDelta.angle);
+            panLeft(SCROLLSPEED);
             console.log("shifting left");
           } else if (roll < -0.5) {
             // tilt right
-            lookAtPoint.x -= SCROLLSPEED * Math.cos(cameraDelta.angle);
-            lookAtPoint.y += SCROLLSPEED * Math.sin(cameraDelta.angle);
+            panRight(SCROLLSPEED);
             console.log("shifting right");
           } else if (pitch > 0.5) {
             // tilt back
-            lookAtPoint.x += SCROLLSPEED * Math.sin(cameraDelta.angle);
-            lookAtPoint.y += SCROLLSPEED * Math.cos(cameraDelta.angle);
+            panBackward(SCROLLSPEED);
             console.log("tilting backward");
           } else if (pitch < -0.5) {
             // tilt forward
-            lookAtPoint.x -= SCROLLSPEED * Math.sin(cameraDelta.angle);
-            lookAtPoint.y -= SCROLLSPEED * Math.cos(cameraDelta.angle);
+            panForward(SCROLLSPEED);
             console.log("tilting forward");
           } else if (yaw < -0.5) {
             // rotating counterclockwise
-            cameraDelta.angle += ROTATESPEED;
+            rotateLeft(ROTATESPEED);
           } else if (yaw > 0.5) {
             // rotating clockwise
-            cameraDelta.angle -= ROTATESPEED;
+            rotateRight(ROTATESPEED);
           }
         } else if (frame.hands.length == 2) {
-          // perform zooming in and out
+          // perform zooming in and out if two hands detected
           for (var i = 0; i < frame.hands.length; i++) {
             var hand = frame.hands[i];
             if (previousFrame && previousFrame.valid) {
               var translation = hand.translation(previousFrame);
               if ((hand.type == "right" && translation[0] > 0.5) || (hand.type == "left" && translation[0] < -0.5)) {
                 // zooming out
-                if (cameraDelta.z < 400) {
-                  cameraDelta.z += ZOOMSPEED;  
-                  console.log("zooming out");
-                }
+                zoomOut(ZOOMSPEED);
+                console.log("zooming out");
               } else if ((hand.type == "right" && translation[0] < -0.5) || (hand.type == "left" && translation[0] > 0.5)) {
                 // zoom in
-                if (cameraDelta.z > -10) {
-                  cameraDelta.z -= ZOOMSPEED;  
-                  console.log("zooming in");
-                }
+                zoomIn(ZOOMSPEED);
+                console.log("zooming in");
               }
             }  
           }
