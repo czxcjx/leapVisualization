@@ -40,13 +40,42 @@
 				dataPoints[x][y]++;
 			}
 		}
-    
+ 
+    var TILE_H = 640;
+    var TILE_W = 640;
+    var MAX_X = TILE_W*0.75;
+    var MIN_X = - TILE_W*0.75;
+    var MAX_Y = TILE_H*0.75;
+    var MIN_Y = - TILE_H*0.75;
+    var NORMAL_DIST = 300;
+    var MIN_DIST = 200;
+    var MAX_DIST = 400;   
+
     THREE.ImageUtils.crossOrigin = "anonymous";
-    var img = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=40.714728,-73.998672&zoom=12&size=400x400')});
-    img.map.needsUpdate = true;
-    var plane = new THREE.Mesh(new THREE.PlaneGeometry(640,640), img);
-    plane.overdraw = true;
-    scene.add(plane);
+    var randomTexture = THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=0,0&zoom=12&size=640x640');
+    //var img = new THREE.MeshBasicMaterial({map: THREE.ImageUtils.loadTexture});
+    //img.map.needsUpdate = true;
+    var imgs = [[],[],[],[],[]];
+    var planes = [[],[],[]];
+    for (var i = 0; i < 5; i++) {
+      for (var j = 0; j < 5; j++) {
+        imgs[i][j] = new THREE.MeshBasicMaterial({map: randomTexture});
+        imgs[i][j].map.needsUpdate = true;
+      }
+    }
+
+    for (var i = 0; i < 3; i++) {
+      for (var j = 0; j < 3; j++) {
+        planes[i][j] = new THREE.Mesh(new THREE.PlaneGeometry(TILE_W, TILE_H), imgs[i+1][j+1]);
+        planes[i][j].overdraw = true;
+        scene.add(planes[i][j]);
+        planes[i][j].position.x = (i-1) * TILE_W;
+        planes[i][j].position.y = (j-1) * TILE_H;
+      }
+    }
+    //var plane = new THREE.Mesh(new THREE.PlaneGeometry(640,640), img);
+    //plane.overdraw = true;
+    //scene.add(plane);
    
     /*
     var sphereGeom = new THREE.SphereGeometry(3, 3, 2);
@@ -64,54 +93,74 @@
         //scene.add(sphere);
       }
     }*/
-
-    var TILE_H = 640;
-    var TILE_W = 640;
-    var MAX_X = TILE_W/2;
-    var MIN_X = - TILE_W/2;
-    var MAX_Y = TILE_H/2;
-    var MIN_Y = - TILE_H/2;
-    var NORMAL_DIST = 400;
-    var MIN_DIST = 300;
-    var MAX_DIST = 600;
+    function updateCache(dx,dy) {
+      if (dx === undefined) dx = 1000;
+      if (dy === undefined) dy = 1000;
+      var newimgs = [[],[],[],[],[]];
+      for (var i = 0; i < 5; i++) {
+        for (var j = 0; j < 5; j++) {
+          console.log(i+dx,j+dy);
+          if (i+dx < 0 || i+dx >= 5 || j+dy < 0 || j+dy >= 5) {
+            if (i == 2 && j == 2) {
+              newimgs[i][j] = getMap(mapLocation);
+            } else {
+              var loc = {lat: 0, lon: 0, zoom: mapLocation.zoom};
+              var tx = Math.abs(i-2)*2;
+              var ty = Math.abs(j-2)*2;
+              var bounds = getBounds(mapLocation, TILE_H*ty, TILE_W*tx);
+              loc.lat = (j > 2)?bounds.upLat:bounds.downLat;
+              if (j == 2) loc.lat = mapLocation.lat;
+              loc.lon = (i > 2)?bounds.rightLon:bounds.leftLon;
+              if (i == 2) loc.lon = mapLocation.lon;
+              newimgs[i][j] = getMap(loc);
+              console.log(i,j,loc);
+            }
+          } else {
+            newimgs[i][j] = imgs[i+dx][j+dy].map;
+          }
+        }
+      }
+      for (var i = 0; i < 5; i++) {
+        for (var j = 0; j < 5; j++) {
+          imgs[i][j].map = newimgs[i][j];
+          imgs[i][j].map.needsUpdate = true;
+        }
+      }
+    }
     function updateMap() {
-      var hasChanged = false;
       if (lookAtPoint.x > MAX_X) {
-        lookAtPoint.x -= TILE_W/2;
-        mapLocation.lon = getBounds(mapLocation, TILE_H, TILE_W).rightLon;
-        hasChanged = true;
+        lookAtPoint.x -= TILE_W;
+        mapLocation.lon = getBounds(mapLocation, TILE_H*2, TILE_W*2).rightLon;
+        updateCache(1,0);
       }
       if (lookAtPoint.x < MIN_X) {
-        lookAtPoint.x += TILE_W/2;
-        mapLocation.lon = getBounds(mapLocation, TILE_H, TILE_W).leftLon;
-        hasChanged = true;
+        lookAtPoint.x += TILE_W;
+        mapLocation.lon = getBounds(mapLocation, TILE_H*2, TILE_W*2).leftLon;
+        updateCache(-1,0);
       }
       if (lookAtPoint.y > MAX_Y) {
-        lookAtPoint.y -= TILE_H/2;
-        mapLocation.lat = getBounds(mapLocation, TILE_H, TILE_W).upLat;
-        hasChanged = true;
+        lookAtPoint.y -= TILE_H;
+        mapLocation.lat = getBounds(mapLocation, TILE_H*2, TILE_W*2).upLat;
+        updateCache(0,1);
       }
       if (lookAtPoint.y < MIN_Y) {
-        lookAtPoint.y += TILE_H/2;
-        mapLocation.lat = getBounds(mapLocation, TILE_H, TILE_W).downLat;
-        hasChanged = true;
+        lookAtPoint.y += TILE_H;
+        mapLocation.lat = getBounds(mapLocation, TILE_H*2, TILE_W*2).downLat;
+        updateCache(0,-1);
       }
       if (cameraDelta.d < MIN_DIST) {
         mapLocation.zoom++;
         lookAtPoint.x *= 2;
         lookAtPoint.y *= 2;
         cameraDelta.d *= 2;
-        hasChanged = true;
+        updateCache();
       }
       if (cameraDelta.d > MAX_DIST) {
         mapLocation.zoom--;
         lookAtPoint.x /= 2;
         lookAtPoint.y /= 2;
         cameraDelta.d /= 2;
-        hasChanged = true;
-      }
-      if (hasChanged) {
-        loadMap(mapLocation);
+        updateCache();
       }
     }
     function updateCamera() {
@@ -124,23 +173,30 @@
 
     function getBounds(mapLoc, h, w) {
       var lon = mapLoc.lon, lat = mapLoc.lat, zoom = mapLoc.zoom;
+      var latRad = lat * Math.PI / 180;
+      var mercN = Math.log(Math.tan((Math.PI/4) + (latRad/2)));
       return {
         leftLon: lon - (360 * w) / Math.pow(2, 9+zoom),
         rightLon: lon + (360 * w) / Math.pow(2, 9+zoom),
-        downLat: 180 * Math.asin(Math.sin(lat * Math.PI / 180) - h / Math.pow(2, 7+zoom))/Math.PI,
-        upLat: 180 * Math.asin(Math.sin(lat * Math.PI / 180) + h / Math.pow(2, 7+zoom))/Math.PI,
+        downLat: 180 * Math.atan(Math.tan(lat * Math.PI / 180) - h / Math.pow(2, 6+zoom))/Math.PI,
+        upLat: 180 * Math.atan(Math.tan(lat * Math.PI / 180) + h / Math.pow(2, 6+zoom))/Math.PI,
       };
     }
-    function loadMap(mapLoc) {
-      console.log(mapLoc);
-      img.map = THREE.ImageUtils.loadTexture('http://maps.googleapis.com/maps/api/staticmap?center=' + mapLoc.lat + ',' + mapLoc.lon + '&zoom=' + mapLoc.zoom + '&size=640x640&key='+API_KEY);
-      img.map.needsUpdate = true;
+
+    function getMap(mapLoc) {
+      var query = 'http://maps.googleapis.com/maps/api/staticmap?center=' + mapLoc.lat + ',' + mapLoc.lon + '&zoom=' + mapLoc.zoom + '&size=640x640&key='+API_KEY;
+      console.log(query);
+      return THREE.ImageUtils.loadTexture(query);
     }
+
+    
+
     var mapLocation = {lat: 40.022482, lon: -75.108077, zoom: 11};
     var API_KEY = "AIzaSyB6PUUj1nfpIUw3gmF2e0s5AaoZe-CFyRA";
-    var lookAtPoint = {x: 0, y: 50, z: 0};
-    var cameraDelta = {d: 400, elevation: 45 * (Math.PI / 180), heading: 270 * (Math.PI / 180)};
-    loadMap(mapLocation);
+    var lookAtPoint = {x: 0, y: 0, z: 0};
+    var cameraDelta = {d: NORMAL_DIST, elevation: 45 * (Math.PI / 180), heading: 180 * (Math.PI / 180)};
+    //loadMap(mapLocation);
+    updateCache();
     updateCamera();
 
     var ambientLight = new THREE.AmbientLight(0x555555);
@@ -302,10 +358,6 @@
         zoomIn(MOVESPEED);
       } else if (e.keyCode == 69) { // E
         zoomOut(MOVESPEED);
-      } else if (e.keyCode == 70) { // F
-        var bounds = getBounds(mapLocation,640,640);
-        mapLocation.lon = bounds.rightLon;
-        loadMap(mapLocation);
       } else {
         return;
       }
