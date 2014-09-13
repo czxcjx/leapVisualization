@@ -1,0 +1,12 @@
+<script>
+  var lat = 40.714728;
+  var lon = -73.998672;
+  var zoom = 15;
+  var height = 800;
+  var width = 800;
+
+  var leftLat = lat - (360 * width) / pow(2, 9+zoom);
+  var rightLat = lat + (360 * width) / pow(2, 9+zoom);
+  var downLon = Math.asin(Math.sin(lon) - height / pow(2, 9+zoom));
+  var upLon = Math.asin(Math.sin(lon) + height / pow(2, 9+zoom));
+</script>
