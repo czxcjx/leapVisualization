@@ -1,11 +1,12 @@
 <html>
 <head>
-  <title>LeapVis</title>
+  <title>LeapVis - PennApps Fall 2014</title>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Data visualization for Leap Motion">
   <meta name="author" content="JY, ID, ZX, LH">
+  
   <script src="three.min.js"></script>
   <script src="leap-0.6.2.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
@@ -13,6 +14,7 @@
   <link href="http://getbootstrap.com/examples/justified-nav/justified-nav.css" rel="stylesheet">
   <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:300' rel='stylesheet' type='text/css'>
   <link rel="icon" href="leapvis-favicon.png">
+
   <style>
     body {
       font-family: 'Source Sans Pro', sans-serif;
@@ -35,6 +37,14 @@
       updateCache();
       updateCamera();
     }
+
+    function pauseForGestures() {
+      if (document.getElementById("pauseOnGesture").checked) {
+        paused = true;
+      } else {
+        paused = false;
+      }
+    }
   </script>
 </head>
 <body>
@@ -53,11 +63,11 @@
   </div>
   <br>
 
-  <div id="mapContainer" align="center">
+  <div id="mapContainer" align="center" style="color:white">
     <div id="map">
     </div>
     <br>
-    <div id="infoPanel" style="color:white">
+    <div id="infoPanel">
       <br><br>
     </div>
     <br>
@@ -67,9 +77,13 @@
       Remarks <input type="text" name="remarks">
       <input style="color:black" type="submit" value="Submit">
     </form>
+    <div>
+      <input type="checkbox" id="pauseOnGesture" onclick="pauseForGestures()"> Pause gesture recognition</input>
+    </div>
   </div>
   
   <script>
+    var paused = false;
     var verticalBuffer = 150;
     var horizontalBuffer = 200;
 
@@ -354,7 +368,6 @@
     var API_KEY = "AIzaSyB6PUUj1nfpIUw3gmF2e0s5AaoZe-CFyRA";
     var lookAtPoint = {x: 0, y: 0, z: 0};
     var cameraDelta = {d: NORMAL_DIST, elevation: 45 * (Math.PI / 180), heading: 180 * (Math.PI / 180)};
-    //loadMap(mapLocation);
     updateCache();
     updateCamera();
 
@@ -406,32 +419,8 @@
     // variables to use in the leap loop
     var previousFrame = null;
     var performedAction = false;
-    var info, palm, phalanges = [];
-
-    function initPalm() {
-      console.log("initializing palm");
-      // palm
-      geometry = new THREE.BoxGeometry( 80, 20, 80 );
-      geometry.applyMatrix( new THREE.Matrix4().makeTranslation( 0, 0, -30 ) );  // to to +30 if using pitch roll & yaw
-      material = new THREE.MeshNormalMaterial();
-      palm = new THREE.Mesh( geometry, material );
-      palm.castShadow = true;
-      palm.receiveShadow = true;
-      scene.add( palm );
-    }
-    function initPhalanges() {
-      // phalanges
-      geometry = new THREE.BoxGeometry( 16, 12, 1 );
-      for ( var i = 0; i < 15; i++) {
-        mesh = new THREE.Mesh( geometry, material );
-        mesh.castShadow = true;
-        mesh.receiveShadow = true;
-        scene.add( mesh );
-        phalanges.push( mesh );
-      }
-    }
-    initPalm();
-    initPhalanges();
+    var selectX = NUM_ROWS / 2;
+    var selectY = NUM_ROWS / 2;
 
     function performAction(x, y) {
       var data = getDataForCoordinate(x, y);
@@ -453,31 +442,8 @@
     }
 
     Leap.loop({enableGestures: true}, function(frame) {
-      console.log("inside loop");
-      // DRAWING OF HAND TO ACT AS CURSOR
-      var hand, phalanx, point, length;
-      if ( frame.hands.length ) {
-        hand = frame.hands[0];
-        palm.position.set( hand.palmPosition[0], hand.palmPosition[1], hand.palmPosition[2] );
-        direction = new THREE.Vector3( hand.direction[0], hand.direction[1], hand.direction[2] );  // best so far
-        palm.lookAt( direction.add( palm.position ) );
-        palm.rotation.z = -hand.roll();
-      }
-      iLen = ( frame.pointables.length < 5 ) ? frame.pointables.length : 5;
-      for (var i = 0; i < iLen; i++) {
-        for ( var j = 0; j < 3; j++) {
-          phalanx = phalanges[ 3 * i + j];
-          if (frame.pointables[i].positions) {
-            point = frame.pointables[i].positions[j];
-            phalanx.position.set( point[0], point[1], point[2] );
-            point = frame.pointables[i].positions[ j + 1 ];
-            point = new THREE.Vector3( point[0], point[1], point[2] );
-            phalanx.lookAt( point );
-            length = phalanx.position.distanceTo( point );
-            phalanx.translateZ( 0.5 * length );
-            phalanx.scale.set( 1, 1, length );
-          }
-        }
+      if (paused) {
+        return;
       }
 
       // MAIN GESTURE RECOGNITION
@@ -492,7 +458,7 @@
           if (hand) {
             var pitch = hand.pitch();
             var yaw = hand.yaw();
-            var roll = hand.roll();  
+            var roll = hand.roll(); 
           }
           if (frame.pointables.length > 0) { // check for how many fingers are extended
             var countFingersExtended = 0;
@@ -520,26 +486,22 @@
                 } else {
                   rotateDown(ROTATEFRONTBACKSPEED);
                 }
-              } else if (gesture.type == "screenTap") { // check for screen tap
-                // var duration = gesture.duration; 
+              } else if (gesture.type == "keyTap") { // check for screen tap
                 console.log("performing selection");
-                // get coordinates of location selected
-                var currMapBounds = getBounds(mapLocation, TILE_H, TILE_W);
-                var distLon = currMapBounds.rightLon - currMapBounds.leftLon;
-                var distLat = (currMapBounds.upLat - currMapBounds.downLat) / 2.0; // divide by 2 cause it's only half the map
-                if (hand) {
-                  var handPosition = hand.palmPosition;
-                  var DIFF = 400.0;
-                  var LOWER_X_BOUND = -200;
-                  var LOWER_Y_BOUND = 0; 
-                  var selectedLon = (((handPosition[0] - LOWER_Y_BOUND) / DIFF) * distLon) + currMapBounds.leftLon;
-                  var selectedLat = (((handPosition[1] - LOWER_X_BOUND) / DIFF) * distLat) + currMapBounds.downLat;
-                  performAction(selectedLat, selectedLon);
-                }
+                performAction(selectX, selectY);
               } else {
                 console.log("unknown gesture type");
               }
             }
+          } else if (countFingersExtended == 1) {
+            // select rect
+            var handPosition = hand.palmPosition;
+            var DIFF = 400.0;
+            var LOWER_X_BOUND = -200;
+            var LOWER_Y_BOUND = 0; 
+            selectX = Math.floor(((handPosition[0] - LOWER_X_BOUND) / DIFF) * NUM_ROWS);
+            selectY = Math.floor(((handPosition[1] - LOWER_Y_BOUND) / DIFF) * NUM_ROWS);
+            setSelectRect(selectX, selectY);
           } else if (countFingersExtended > 1) {
             if (roll > 0.5) { // tilt left
               panLeft(SCROLLSPEED);
@@ -557,9 +519,9 @@
               rotateLeft(ROTATESPEED);
             } else if (yaw > 0.5) { // rotating clockwise
               rotateRight(ROTATESPEED);
-            } else if (translation[1] > 3) {
+            } else if (translation[1] > 5) {
               growRects();
-            } else if (translation[1] < -3) {
+            } else if (translation[1] < -5) {
               shrinkRects();              
             }
           }
@@ -620,6 +582,9 @@
         performAction(40.022482, -75.108077); // hardcoded coords for testing
       } else if (e.keyCode == 82) { // R
         reset();
+      } else if (e.keyCode == 80) { // P
+        $('#pauseOnGesture').prop('checked', !document.getElementById("pauseOnGesture").checked);
+        paused = document.getElementById("pauseOnGesture").checked;        
       } else {
         return;
       }
