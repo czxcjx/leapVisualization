@@ -42,16 +42,16 @@
 				return arr;
 		}
  
-    var NUM_ROWS = 100.0;
+    var NUM_ROWS = 30.0;
     var TILE_H = 640;
     var TILE_W = 640;
     var MAX_X = TILE_W*0.75;
     var MIN_X = - TILE_W*0.75;
     var MAX_Y = TILE_H*0.75;
     var MIN_Y = - TILE_H*0.75;
-    var NORMAL_DIST = 300;
-    var MIN_DIST = 200;
-    var MAX_DIST = 400;   
+    var NORMAL_DIST = 400;
+    var MIN_DIST = 300;
+    var MAX_DIST = 600;   
 
     // function to populate heat map
     function getDataPoints(x1, x2, y1, y2) {
@@ -97,8 +97,8 @@
     var sphereMat = [];
 		//TODO: obtain bounds and query database
 		//var data = getDataPoints(x1,x2,y1,y2);
-    for (var i = 0; i < 5; i++) sphereMat[i] = new THREE.MeshBasicMaterial({color: heatColors[i]});
-    for (var i = -50; i < 50; i++) {
+    for (var i = 0; i < 5; i++) sphereMat[i] = new THREE.MeshLambertMaterial({color: 0xffffff, ambient: heatColors[i], transparent: true, opacity: 0.6});
+    /*for (var i = -50; i < 50; i++) {
       for (var j = -50; j < 50; j++) {
         var zVal = Math.exp(-(i*i + j*j)/1000)*300;
 //		 		var zVal = data[i + 50][j + 50];
@@ -109,6 +109,72 @@
         sphere.position.z = zVal;
         scene.add(sphere);
       }
+    }*/
+
+    //Draw data points
+    var data = [];
+    for (var i = 0; i < NUM_ROWS; i++) {
+      data.push([]);
+      for (var j = 0; j < NUM_ROWS; j++) {
+        var x = i - NUM_ROWS/2;
+        var y = j - NUM_ROWS/2;
+        //data[i][j] = Math.exp(-(x*x + y*y)/8)*200;
+        data[i][j] = Math.exp(Math.random()*10)/50;
+      }
+    }
+    var rects = [];
+    for (var i = 0; i < NUM_ROWS; i++) {
+      rects.push([]);
+      for (var j = 0; j < NUM_ROWS; j++) {
+        data[i].push(0);
+        rects[i][j] = new THREE.Mesh(sphereGeom,sphereMat[0]);
+        rects[i][j].position.x = (i - NUM_ROWS/2) * (3*TILE_W/NUM_ROWS);
+        rects[i][j].position.y = (j - NUM_ROWS/2) * (3*TILE_H/NUM_ROWS);;
+        rects[i][j].position.z = 0;
+        scene.add(rects[i][j]);
+      }
+    }
+    function drawDataPoints() {
+      for (var i = 0; i < NUM_ROWS; i++) {
+        for (var j = 0; j < NUM_ROWS; j++) {
+          rects[i][j].geometry = new THREE.BoxGeometry(3*TILE_W/NUM_ROWS, 3*TILE_H/NUM_ROWS,data[i][j]);
+          rects[i][j].position.z = data[i][j]/2 - 0.5;
+          var lambda = Math.min(data[i][j]/200, 0.99);
+          var r = Math.floor(256*lambda);
+          var g = Math.floor(256*(1-lambda));
+          var col = r*256*256 + g * 256;
+          rects[i][j].material = new THREE.MeshLambertMaterial({color: 0xffffff, ambient: col, transparent: true, opacity: 0.5});
+        }
+      }
+    }
+    drawDataPoints();
+    function growRects() {
+      var t = 0;
+      function animate () {
+        for (var i = 0; i < NUM_ROWS; i++) {
+          for (var j = 0; j < NUM_ROWS; j++) {
+            rects[i][j].position.z += 15;
+            rects[i][j].position.z = Math.min(data[i][j]/2 - 0.5,rects[i][j].position.z);
+          }
+        }
+        t++;
+        if (t < 40) setTimeout(animate,10);
+      }
+      animate();
+    }
+    function shrinkRects() {
+      var t = 0;
+      function animate () {
+        for (var i = 0; i < NUM_ROWS; i++) {
+          for (var j = 0; j < NUM_ROWS; j++) {
+            rects[i][j].position.z -= 15;
+            if (data[i][j]/2 > 0.5) rects[i][j].position.z = Math.max(-data[i][j]/2 + 5,rects[i][j].position.z);
+          }
+        }
+        t++;
+        if (t < 40) setTimeout(animate,10);
+      }
+      animate();
     }
 
     function updateCache(dx,dy) {
@@ -219,7 +285,7 @@
     updateCache();
     updateCamera();
 
-    var ambientLight = new THREE.AmbientLight(0x555555);
+    var ambientLight = new THREE.AmbientLight(0xffffff);
     scene.add(ambientLight);
 
     // speed of frame changing
@@ -249,10 +315,10 @@
       lookAtPoint.y += speed * Math.cos(cameraDelta.heading);
     }
     function rotateUp(angle) {
-      cameraDelta.elevation = clamp(10 * (Math.PI/180), cameraDelta.elevation + angle, 80 * (Math.PI/180));
+      cameraDelta.elevation = clamp(10 * (Math.PI/180), cameraDelta.elevation + angle, 88 * (Math.PI/180));
     }
     function rotateDown(angle) {
-      cameraDelta.elevation = clamp(10 * (Math.PI/180), cameraDelta.elevation - angle, 80 * (Math.PI/180));
+      cameraDelta.elevation = clamp(10 * (Math.PI/180), cameraDelta.elevation - angle, 88 * (Math.PI/180));
     }
     function rotateLeft(angle) {
       cameraDelta.heading += 0.1;
@@ -466,9 +532,9 @@
       } else if (e.keyCode == 69) { // E
         zoomOut(MOVESPEED);
       } else if (e.keyCode == 70) { // F
-        var bounds = getBounds(mapLocation,TILE_H,TILE_W);
-        mapLocation.lon = bounds.rightLon;
-        loadMap(mapLocation);
+        shrinkRects();
+      } else if (e.keyCode == 71) { // G
+        growRects();
       } else if (e.keyCode == 76) { // L
         performAction(40.022482, -75.108077); // hardcoded coords for testing
       } else {
