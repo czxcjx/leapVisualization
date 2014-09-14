@@ -136,8 +136,8 @@
       for (var j = 0; j < NUM_ROWS; j++) {
         data[i].push(0);
         rects[i][j] = new THREE.Mesh(sphereGeom,sphereMat[0]);
-        rects[i][j].position.x = (i - NUM_ROWS/2) * (3*TILE_W/NUM_ROWS);
-        rects[i][j].position.y = (j - NUM_ROWS/2) * (3*TILE_H/NUM_ROWS);;
+        rects[i][j].position.x = (i - NUM_ROWS/2 + 0.5) * (3*TILE_W/NUM_ROWS);
+        rects[i][j].position.y = (j - NUM_ROWS/2 + 0.5) * (3*TILE_H/NUM_ROWS);
         rects[i][j].position.z = 0;
         scene.add(rects[i][j]);
       }
@@ -166,7 +166,7 @@
         for (var i = 0; i < NUM_ROWS; i++) {
           for (var j = 0; j < NUM_ROWS; j++) {
             rects[i][j].position.z += 15;
-            rects[i][j].position.z = Math.min(data[i][j]/2 - 0.5,rects[i][j].position.z);
+            rects[i][j].position.z = Math.min(data[i][j]/2 + 0.5,rects[i][j].position.z);
           }
         }
         t++;
@@ -180,7 +180,7 @@
         for (var i = 0; i < NUM_ROWS; i++) {
           for (var j = 0; j < NUM_ROWS; j++) {
             rects[i][j].position.z -= 15;
-            if (data[i][j]/2 > 0.5) rects[i][j].position.z = Math.max(-data[i][j]/2 + 5,rects[i][j].position.z);
+            rects[i][j].position.z = Math.max(-data[i][j]/2 + 1,rects[i][j].position.z);
           }
         }
         t++;
