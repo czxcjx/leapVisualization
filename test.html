@@ -117,7 +117,7 @@
         scene.add(sphere);
       }
     }*/
-    
+
 
     //Draw data points
     var data = [];
@@ -399,7 +399,7 @@
 
       var ctx = mycanvas.getContext("2d");
       ctx.font="12px Georgia";
-      // create string
+      // TODO: create string
       var outputString = "";
       outputString += "Count: " + data["count"] + "\n";
       outputString += "Remarks: " + data["remarks"]
@@ -529,6 +529,10 @@
               rotateLeft(ROTATESPEED);
             } else if (yaw > 0.5) { // rotating clockwise
               rotateRight(ROTATESPEED);
+            } else if (translation[1] > 3) {
+              growRects();
+            } else if (translation[1] < -3) {
+              shrinkRects();              
             }
           }
         } else if (frame.hands.length == 2) {
