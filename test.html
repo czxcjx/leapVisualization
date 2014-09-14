@@ -104,7 +104,7 @@
     var sphereMat = [];
 		//TODO: obtain bounds and query database
 		//var data = getDataPoints(x1,x2,y1,y2);
-    for (var i = 0; i < 5; i++) sphereMat[i] = new THREE.MeshLambertMaterial({color: 0xffffff, ambient: heatColors[i], transparent: true, opacity: 0.6});
+    for (var i = 0; i < 5; i++) sphereMat[i] = new THREE.MeshLambertMaterial({color: 0xffffff, ambient: heatColors[i], transparent: true, opacity: 0.3});
     /*for (var i = -50; i < 50; i++) {
       for (var j = -50; j < 50; j++) {
         var zVal = Math.exp(-(i*i + j*j)/1000)*300;
@@ -160,6 +160,19 @@
       }
     }
     drawDataPoints();
+
+    var selectRect = new THREE.Mesh(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0xffffff}));
+    function setSelectRect(sx, sy) {
+      scene.remove(selectRect);
+      var srect = rects[sx][sy];
+      selectRect = new THREE.Mesh(
+        srect.geometry,
+        new THREE.MeshBasicMaterial({color: 0x0000ff, wireframe: true})
+      );
+      selectRect.position.set(srect.position.x, srect.position.y, srect.position.z);
+      scene.add(selectRect);
+    }
+
     function growRects() {
       var t = 0;
       function animate () {
