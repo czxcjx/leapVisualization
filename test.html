@@ -127,7 +127,7 @@
         var x = i - NUM_ROWS/2;
         var y = j - NUM_ROWS/2;
         //data[i][j] = Math.exp(-(x*x + y*y)/8)*200;
-        data[i][j] = Math.exp(Math.random()*10)/50;
+        data[i][j] = Math.exp(Math.random()*10)/90;
       }
     }
     var rects = [];
@@ -142,16 +142,20 @@
         scene.add(rects[i][j]);
       }
     }
+    function interpolate(c1, c2, lambda) {
+      var r = (1-lambda)*(c1>>16) + lambda*(c2>>16);
+      var g = (1-lambda)*((c1&0xffff)>>8) + lambda*((c2&0xffff)>>8);
+      var b = (1-lambda)*(c1&0xff) + lambda*(c2&0xff);
+      return (Math.floor(r) << 16) + (Math.floor(g) << 8) + Math.floor(b);
+    }
     function drawDataPoints() {
       for (var i = 0; i < NUM_ROWS; i++) {
         for (var j = 0; j < NUM_ROWS; j++) {
           rects[i][j].geometry = new THREE.BoxGeometry(3*TILE_W/NUM_ROWS, 3*TILE_H/NUM_ROWS,data[i][j]);
-          rects[i][j].position.z = data[i][j]/2 - 0.5;
+          rects[i][j].position.z = data[i][j]/2 + 0.5;
           var lambda = Math.min(data[i][j]/200, 0.99);
-          var r = Math.floor(256*lambda);
-          var g = Math.floor(256*(1-lambda));
-          var col = r*256*256 + g * 256;
-          rects[i][j].material = new THREE.MeshLambertMaterial({color: 0xffffff, ambient: col, transparent: true, opacity: 0.5});
+          var col = interpolate(0xffff00, 0xff0000, lambda);
+          rects[i][j].material = new THREE.MeshLambertMaterial({color: col, transparent: true, opacity: 0.5});
         }
       }
     }
@@ -191,7 +195,7 @@
       var newimgs = [[],[],[],[],[]];
       for (var i = 0; i < 5; i++) {
         for (var j = 0; j < 5; j++) {
-          console.log(i+dx,j+dy);
+          //console.log(i+dx,j+dy);
           if (i+dx < 0 || i+dx >= 5 || j+dy < 0 || j+dy >= 5) {
             if (i == 2 && j == 2) {
               newimgs[i][j] = getMap(mapLocation);
@@ -205,7 +209,7 @@
               loc.lon = (i > 2)?bounds.rightLon:bounds.leftLon;
               if (i == 2) loc.lon = mapLocation.lon;
               newimgs[i][j] = getMap(loc);
-              console.log(i,j,loc);
+              //console.log(i,j,loc);
             }
           } else {
             newimgs[i][j] = imgs[i+dx][j+dy].map;
@@ -263,6 +267,7 @@
       camera.position.x = lookAtPoint.x + Math.sin(cameraDelta.heading)*Math.cos(cameraDelta.elevation)*cameraDelta.d;
       camera.up = new THREE.Vector3(0,0,1);
       camera.lookAt(new THREE.Vector3(lookAtPoint.x, lookAtPoint.y, lookAtPoint.z));
+      pointLight.position.set(camera.position.x, camera.position.y, 500);
     }
 
     function getBounds(mapLoc, h, w) {
@@ -283,6 +288,12 @@
       return THREE.ImageUtils.loadTexture(query);
     }    
 
+    var ambientLight = new THREE.AmbientLight(0x333333);
+    scene.add(ambientLight);
+    var pointLight = new THREE.PointLight(0xffffff);
+    pointLight.position.set(200,200,500);
+    scene.add(pointLight);
+
     var mapLocation = {lat: 40.022482, lon: -75.108077, zoom: 11};
     var API_KEY = "AIzaSyB6PUUj1nfpIUw3gmF2e0s5AaoZe-CFyRA";
     var lookAtPoint = {x: 0, y: 0, z: 0};
@@ -290,9 +301,6 @@
     //loadMap(mapLocation);
     updateCache();
     updateCamera();
-
-    var ambientLight = new THREE.AmbientLight(0xffffff);
-    scene.add(ambientLight);
 
     // speed of frame changing
     var MOVESPEED = 20;
