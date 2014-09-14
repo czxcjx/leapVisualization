@@ -1,14 +1,22 @@
 <html>
 <head>
   <title>LeapVis</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Data visualization for Leap Motion">
+  <meta name="author" content="JY, ID, ZX, LH">
   <script src="three.min.js"></script>
   <script src="leap-0.6.2.js"></script>
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
-  <link rel="icon" href="favicon.png">
+  <link href="http://getbootstrap.com/examples/justified-nav/justified-nav.css" rel="stylesheet">
+  <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:300' rel='stylesheet' type='text/css'>
+  <link rel="icon" href="leapvis-favicon.png">
   <style>
     body {
-      background-color: #000000
+      font-family: 'Source Sans Pro', sans-serif;
+      background-image: url('use_your_illusion.png');
     }
   </style>
   <script>
@@ -20,8 +28,8 @@
       cameraDelta = {d: NORMAL_DIST, elevation: 45 * (Math.PI / 180), heading: 180 * (Math.PI / 180)};
       // resets canvas size
       $("canvas").animate({
-        width: window.innerWidth,
-        height: window.innerHeight
+        width: window.innerWidth - horizontalBuffer,
+        height: window.innerHeight - verticalBuffer
       }, 1000);
       $("#tempCanvas").remove();
       updateCache();
@@ -30,12 +38,41 @@
   </script>
 </head>
 <body>
+  <div class="container">
+    <table>
+      <tr>
+        <td><img src="leapvis-transparent.png" width="200px" height="55px"></td>
+        <td>
+          <ul class="nav nav-justified" style="opacity:0.8">
+            <li><a href="about.html">About</a></li>
+            <li><a href="#">Instructions</a></li>
+          </ul>
+        </td>
+      </tr>
+    </table>
+  </div>
+  <br>
+  <div id="form" align="center">
+    <form style="color:white">
+      Latitude <input type="text" name="latitude" id="inputLat">
+      Longitude <input type="text" name="longitude" id="inputLon">
+      Remarks <input type="text" name="metadata">
+      <input type="submit" value="Submit" style="color:black">
+    </form>
+  </div>
+  
+  <div id="map" align="center">
+  </div>
   <script>
+    var verticalBuffer = 200;
+    var horizontalBuffer = 200;
+
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 10000);
     var renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+    renderer.setSize(window.innerWidth - horizontalBuffer, window.innerHeight - verticalBuffer);
+    // document.body.appendChild(renderer.domElement);
+    document.getElementById("map").appendChild(renderer.domElement);
 
 		Array.matrix = function(numrows, numcols, initial){
 			 var arr = [];
@@ -617,5 +654,12 @@
     };
     render();
   </script>
+  <!-- Site footer -->
+  <div class="container">
+    <div class="footer" style="color:white">
+      &copy; Ignatius Damai, Jevon Yeoh, Lianhan Loh, Zhan Xiong Chin<br>
+        PennApps - Fall 2014
+    </div>
+  </div>
 </body>
 </html>

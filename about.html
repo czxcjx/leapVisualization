@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Data visualization for Leap Motion">
     <meta name="author" content="">
-    <link rel="icon" href="favicon.png">
+    <link rel="icon" href="leapvis-favicon.png">
 
     <title>LeapVis - PennApps Fall 2014</title>
 
@@ -51,14 +51,17 @@
   <body>
 
     <div class="container">
-      <div class="masthead">
-        <h3 style="color:white">LeapVis</h3>
-        <ul class="nav nav-justified" style="opacity:0.8">
-          <li><a href="test.html">Home</a></li>
-          <li class="active"><a href="#">About</a></li>
-          <li><a href="instructions.html">Instructions</a></li>
-        </ul>
-      </div>
+      <table>
+        <tr>
+          <td><a href="test.html"><img src="leapvis-transparent.png" width="200px" height="55px"></a></td>
+          <td>
+            <ul class="nav nav-justified" style="opacity:0.8">
+              <li class="active"><a href="#">About</a></li>
+              <li><a href="instructions.html">Instructions</a></li>
+            </ul>
+          </td>
+        </tr>
+      </table>
 
       <!-- Jumbotron -->
       <div class="jumbotron">
@@ -73,16 +76,6 @@
         	Hacked on by Ignatius (igndamai@seas), Jevon (jevony@seas), Lianhan (lianhan@seas) and Zhan Xiong (chinz@seas) for PennApps X, Fall 2014.
         </p>
       </div>
-
-      <form style="color:white">
-      	Latitude<br>
-      	<input type="text" name="latitude"><br>
-      	Longitude<br>
-      	<input type="text" name="longitude"><br>
-      	Remarks<br>
-      	<input type="text" name="metadata"><br><br>
-      	<input type="submit" value="Submit" style="color:black">
-      </form>
 
       <!-- Site footer -->
       <div class="footer">
