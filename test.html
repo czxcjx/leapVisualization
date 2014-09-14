@@ -1,28 +1,35 @@
 <html>
 <head>
-  <title>LeapViz</title>
+  <title>LeapVis</title>
+  <script src="three.min.js"></script>
+  <script src="leap-0.6.2.js"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+  <link rel="icon" href="favicon.png">
   <style>
     body {
       background-color: #000000
     }
   </style>
-  <script src="three.min.js"></script>
-  <script src="leap-0.6.2.js"></script>
-  <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
   <script>
     function reset() {
       console.log("resetting map");
       mapLocation = {lat: 40.022482, lon: -75.108077, zoom: 11} // resets to philadelphia
+      // resets camera angles
       lookAtPoint = {x: 0, y: 0, z: 0};
       cameraDelta = {d: NORMAL_DIST, elevation: 45 * (Math.PI / 180), heading: 180 * (Math.PI / 180)};
+      // resets canvas size
+      $("canvas").animate({
+        width: window.innerWidth,
+        height: window.innerHeight
+      }, 1000);
+      $("#tempCanvas").remove();
       updateCache();
       updateCamera();
     }
   </script>
 </head>
 <body>
-  <button type="button" onClick="reset()">Reset map</button>
-  <div id="coordinates"></div>
   <script>
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 10000);
@@ -273,9 +280,7 @@
       var query = 'http://maps.googleapis.com/maps/api/staticmap?center=' + mapLoc.lat + ',' + mapLoc.lon + '&zoom=' + mapLoc.zoom + '&size=640x640&key='+API_KEY;
       console.log(query);
       return THREE.ImageUtils.loadTexture(query);
-    }
-
-    
+    }    
 
     var mapLocation = {lat: 40.022482, lon: -75.108077, zoom: 11};
     var API_KEY = "AIzaSyB6PUUj1nfpIUw3gmF2e0s5AaoZe-CFyRA";
@@ -363,9 +368,59 @@
     initPalm();
     initPhalanges();
 
-    // TODO: LLH
     function performAction(x, y) {
       alert("selected point at " + x + ", " + y);
+      resizeDOM();
+    }
+
+    function resizeDOM(x, y) {
+      // change size of map element
+      var currHeight = $("canvas").get(0).style.height.replace(/\D/g,'');
+      var currWidth = $("canvas").get(0).style.width.replace(/\D/g,'');
+      // TODO: animate the resizing of the dom element
+      var newHeight = currHeight/3*2 + "px";
+      var newWidth = currWidth/3*2 + "px";
+      var reps = 1000;
+      var heightDiff = currHeight/2/reps;
+      var widthDiff = currWidth/2/reps;
+      
+      // insert new dom element that includes the data to be displayed
+      var data = getDataForCoordinate(x, y);
+
+      console.log("creating new canvas");
+      var mycanvas = document.createElement('canvas');
+      mycanvas.id = "tempCanvas";
+      mycanvas.style.x = newWidth;
+      mycanvas.style.y = newHeight;
+      mycanvas.style.background = "white";
+      mycanvas.style.width = currWidth - newWidth;
+      mycanvas.style.height = currHeight - newHeight;
+
+      var ctx = mycanvas.getContext("2d");
+      ctx.font="12px Georgia";
+      // create string
+      var outputString = "";
+      outputString += "Count: " + data["count"] + "\n";
+      outputString += "Remarks: " + data["remarks"]
+
+      ctx.fillText(outputString, 10, 30);
+
+      $("canvas").animate({
+        width: newWidth,
+        height: newHeight
+      }, 1000, "swing", function() {
+        document.body.appendChild(mycanvas);
+      });
+    }
+
+    // TODO: query database
+    function getDataForCoordinate(x, y) {
+      return {
+        "lat": x,
+        "lon": y,
+        "count": 5,
+        "remarks": "The most frequent type of crime here is robbery that occurs between a 12-2am."
+      }
     }
 
     Leap.loop({enableGestures: true}, function(frame) {
@@ -409,12 +464,6 @@
             var pitch = hand.pitch();
             var yaw = hand.yaw();
             var roll = hand.roll();  
-
-            // output hand position
-            var handPosition = hand.palmPosition;
-            var posString = "(" + handPosition[0] + ", " + handPosition[1] + ", " + handPosition[2] + ")" 
-            var handOutput = document.getElementById("coordinates");
-            handOutput.innerHTML = posString;
           }
           if (frame.pointables.length > 0) { // check for how many fingers are extended
             var countFingersExtended = 0;
@@ -448,10 +497,9 @@
                 // get coordinates of location selected
                 var currMapBounds = getBounds(mapLocation, TILE_H, TILE_W);
                 var distLon = currMapBounds.rightLon - currMapBounds.leftLon;
-                var distLat = (currMapBounds.upLat - currMapBounds.downLat) / 2.0;
+                var distLat = (currMapBounds.upLat - currMapBounds.downLat) / 2.0; // divide by 2 cause it's only half the map
                 if (hand) {
                   var handPosition = hand.palmPosition;
-                  // TODO JEVON: change the hand bounds to not be half of the map only
                   var DIFF = 400.0;
                   var LOWER_X_BOUND = -200;
                   var LOWER_Y_BOUND = 0; 
@@ -537,6 +585,8 @@
         growRects();
       } else if (e.keyCode == 76) { // L
         performAction(40.022482, -75.108077); // hardcoded coords for testing
+      } else if (e.keyCode == 82) { // R
+        reset();
       } else {
         return;
       }
