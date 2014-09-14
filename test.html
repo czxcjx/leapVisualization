@@ -72,9 +72,9 @@
     </div>
     <br>
     <form style="color:white">
-      Latitude <input type="text" name="lat">
-      Longitude <input type="text" name="lon">
-      Remarks <input type="text" name="remarks">
+      Latitude <input style="color:black" type="text" name="lat">
+      Longitude <input style="color:black" type="text" name="lon">
+      Remarks <input style="color:black" type="text" name="remarks">
       <input style="color:black" type="submit" value="Submit">
     </form>
     <div>
@@ -423,21 +423,31 @@
     var selectY = NUM_ROWS / 2;
 
     function performAction(x, y) {
-      var data = getDataForCoordinate(x, y);
+      var dataCalled = getDataForCoordinate(x, y);
       var dataOutput = document.getElementById("infoPanel");
       var dataString = "";
-      dataString += "Number of crimes: " + data["count"] + "<br>";
-      dataString += data["remarks"];
+      dataString += "Number of crimes: " + Math.floor(data[x][y]/2+0.5) + "<br>";
+      dataString += dataCalled["remarks"];
       dataOutput.innerHTML = dataString;
     }
 
     // TODO: query database
     function getDataForCoordinate(x, y) {
+      // randomized crime
+      var crime = ["Robbery", "Murder", "Petty Theft"];
+      var startTime = Math.ceil(Math.random() * 11);
+      var endTime = (startTime + 2) % 12;
+      if (endTime == 0) {
+        endTime = 12;
+      }
+      var randomNumber = Math.floor(Math.random() * 3);
+      var remarksString = "The most frequent type of crime here is " + crime[randomNumber] + " that occurs between ";
+      remarksString += startTime + "-" + endTime + "pm.";
       return {
         "lat": x,
         "lon": y,
         "count": 5,
-        "remarks": "The most frequent type of crime here is robbery that occurs between a 12-2am."
+        "remarks": remarksString
       }
     }
 
@@ -579,7 +589,7 @@
       } else if (e.keyCode == 71) { // G
         growRects();
       } else if (e.keyCode == 76) { // L
-        performAction(40.022482, -75.108077); // hardcoded coords for testing
+        performAction(selectX, selectY); // hardcoded coords for testing
       } else if (e.keyCode == 82) { // R
         reset();
       } else if (e.keyCode == 80) { // P
