@@ -28,10 +28,10 @@
       cameraDelta = {d: NORMAL_DIST, elevation: 45 * (Math.PI / 180), heading: 180 * (Math.PI / 180)};
       // resets canvas size
       $("canvas").animate({
-        width: window.innerWidth - horizontalBuffer,
-        height: window.innerHeight - verticalBuffer
-      }, 1000);
-      $("#tempCanvas").remove();
+        width: (window.innerWidth - horizontalBuffer)*9/10,
+        height: (window.innerHeight - verticalBuffer)*9/10
+      }, 1000); 
+      document.getElementById("infoPanel").innerHTML = "<br><br>";
       updateCache();
       updateCamera();
     }
@@ -52,25 +52,24 @@
     </table>
   </div>
   <br>
-  <div id="form" align="center">
-    <form style="color:white">
-      Latitude <input type="text" name="latitude" id="inputLat">
-      Longitude <input type="text" name="longitude" id="inputLon">
-      Remarks <input type="text" name="metadata">
-      <input type="submit" value="Submit" style="color:black">
-    </form>
+
+  <div id="mapContainer" align="center">
+    <div id="map">
+    </div>
+    <br>
+    <div id="infoPanel" style="color:white">
+      <br><br>
+    </div>
   </div>
   
-  <div id="map" align="center">
-  </div>
   <script>
-    var verticalBuffer = 200;
+    var verticalBuffer = 150;
     var horizontalBuffer = 200;
 
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 10000);
     var renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth - horizontalBuffer, window.innerHeight - verticalBuffer);
+    renderer.setSize((window.innerWidth - horizontalBuffer)*9/10, (window.innerHeight - verticalBuffer)*9/10);
     // document.body.appendChild(renderer.domElement);
     document.getElementById("map").appendChild(renderer.domElement);
 
@@ -415,48 +414,12 @@
     initPhalanges();
 
     function performAction(x, y) {
-      alert("selected point at " + x + ", " + y);
-      resizeDOM();
-    }
-
-    function resizeDOM(x, y) {
-      // change size of map element
-      var currHeight = $("canvas").get(0).style.height.replace(/\D/g,'');
-      var currWidth = $("canvas").get(0).style.width.replace(/\D/g,'');
-      // TODO: animate the resizing of the dom element
-      var newHeight = currHeight/3*2 + "px";
-      var newWidth = currWidth/3*2 + "px";
-      var reps = 1000;
-      var heightDiff = currHeight/2/reps;
-      var widthDiff = currWidth/2/reps;
-      
-      // insert new dom element that includes the data to be displayed
       var data = getDataForCoordinate(x, y);
-
-      console.log("creating new canvas");
-      var mycanvas = document.createElement('canvas');
-      mycanvas.id = "tempCanvas";
-      mycanvas.style.x = newWidth;
-      mycanvas.style.y = newHeight;
-      mycanvas.style.background = "white";
-      mycanvas.style.width = currWidth - newWidth;
-      mycanvas.style.height = currHeight - newHeight;
-
-      var ctx = mycanvas.getContext("2d");
-      ctx.font="12px Georgia";
-      // TODO: create string
-      var outputString = "";
-      outputString += "Count: " + data["count"] + "\n";
-      outputString += "Remarks: " + data["remarks"]
-
-      ctx.fillText(outputString, 10, 30);
-
-      $("canvas").animate({
-        width: newWidth,
-        height: newHeight
-      }, 1000, "swing", function() {
-        document.body.appendChild(mycanvas);
-      });
+      var dataOutput = document.getElementById("infoPanel");
+      var dataString = "";
+      dataString += "Number of crimes: " + data["count"] + "<br>";
+      dataString += data["remarks"];
+      dataOutput.innerHTML = dataString;
     }
 
     // TODO: query database
@@ -654,6 +617,7 @@
     };
     render();
   </script>
+
   <!-- Site footer -->
   <div class="container">
     <div class="footer" style="color:white">
